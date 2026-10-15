@@ -29,3 +29,42 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 - **Whitelisted build context.** `.dockerignore` admits only `dist/app_*`.
 - **Multi-arch from one Dockerfile.** `TARGETOS`/`TARGETARCH` pick the matching
   release asset per platform.
+
+### Registry: GHCR
+
+Images are published to `ghcr.io/elantagonista/app-go`. Alternatives considered:
+Docker Hub, a cloud registry (ECR, Artifact Registry, ACR) and a self-hosted
+one (Harbor).
+
+- **No registry credential to manage.** The workflow pushes with its built-in
+  `GITHUB_TOKEN` (`packages: write`), which is short-lived and scoped to one
+  job. Docker Hub would need a long-lived access token stored as a secret,
+  with rotation and leak risk.
+- **One platform for code and artifacts.** Identity, permissions and audit log
+  are GitHub's. The package is linked to this repo, so who can publish an
+  image follows who can change this repo.
+- **No anonymous pull rate limits** for public images, unlike Docker Hub, so
+  cluster nodes can pull freely.
+- **OCI-native.** Multi-arch indexes, attestations, SBOMs and cosign
+  signatures are stored next to the image, ready for supply-chain hardening.
+- **A cloud registry is the better choice when the cluster runs in that
+  cloud** (IAM-based pulls, private networking, built-in scanning).
+
+### Image build workflow
+
+`.github/workflows/build-image.yml` packages a given app-go release.
+
+- **Checksum-verified inputs.** It downloads the release's Linux binaries and
+  verifies them against the release's `checksums.txt` before building, so the
+  image can only contain the bytes that were released.
+- **Injection-safe version handling.** The version must match strict semver
+  and only reaches shell steps as an environment variable, never as
+  `${{ … }}` pasted into a script. This matters once the version arrives in a
+  cross-repo dispatch payload.
+- **No QEMU.** The Dockerfile has no `RUN`, so buildx assembles the arm64 image
+  without executing anything and emulation is not needed.
+- **No `latest` tag.** Rebuilding an older version would move `latest`
+  backwards. Images are tagged with the exact release version, and the
+  deployment pins it.
+- **Manual trigger** (`workflow_dispatch`) to package any release on demand:
+  first runs, rebuilds and backfills.
