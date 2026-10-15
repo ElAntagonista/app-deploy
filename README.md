@@ -71,3 +71,25 @@ one (Harbor).
   `workflow_dispatch` is the manual fallback for rebuilds and backfills. Both
   resolve to the same `VERSION`, and each run is titled with the version it
   builds.
+
+### Kubernetes: Kustomize
+
+`k8s/` deploys the app with one command:
+
+```sh
+kubectl apply -k k8s/
+```
+
+- **Plain YAML, no templating language.** The manifests are reviewable as
+  written, and `kubectl kustomize k8s/` shows exactly what will be applied.
+- **Declarative version pinning.** A release changes one line (`newTag` in
+  `kustomization.yaml`), which automation can bump with
+  `kustomize edit set image`.
+- **GitOps-ready.** Flux and Argo CD consume the folder natively, so adopting
+  either needs no rewrite.
+- **Scales by composition.** Overlays (for example `overlays/prod`) can patch
+  this base when more environments appear.
+- **Helm rejected:** templates, values and chart packaging pay off when a
+  configurable app is distributed to many consumers; for one Deployment and
+  one Service they are indirection. **Raw YAML rejected:** version pins and
+  per-environment differences would turn into `sed` and copy-paste.
