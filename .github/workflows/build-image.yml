@@ -1,6 +1,11 @@
 name: Build image
+run-name: Build image ${{ github.event.client_payload.version || inputs.version }}
 
 on:
+  # Fired by app-go after each successful release.
+  repository_dispatch:
+    types: [new-release]
+  # Manual fallback: rebuilds and backfills.
   workflow_dispatch:
     inputs:
       version:
@@ -12,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-image-${{ inputs.version }}
+  group: build-image-${{ github.event.client_payload.version || inputs.version }}
   cancel-in-progress: false
 
 env:
@@ -28,7 +33,7 @@ jobs:
       contents: read
       packages: write
     env:
-      VERSION: ${{ inputs.version }}
+      VERSION: ${{ github.event.client_payload.version || inputs.version }}
     steps:
       - name: Validate version
         run: |

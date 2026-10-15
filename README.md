@@ -66,5 +66,8 @@ one (Harbor).
 - **No `latest` tag.** Rebuilding an older version would move `latest`
   backwards. Images are tagged with the exact release version, and the
   deployment pins it.
-- **Manual trigger** (`workflow_dispatch`) to package any release on demand:
-  first runs, rebuilds and backfills.
+- **Two triggers, one code path.** app-go fires `repository_dispatch`
+  (`new-release`, payload `{"version": "v1.2.3"}`) after each release;
+  `workflow_dispatch` is the manual fallback for rebuilds and backfills. Both
+  resolve to the same `VERSION`, and each run is titled with the version it
+  builds.
