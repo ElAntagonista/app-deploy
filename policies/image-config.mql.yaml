@@ -1,0 +1,38 @@
+# Gate for the built images' configuration, read from the Docker host
+# (cnspec scan local). The image filesystem scan cannot see EXPOSE or USER.
+# The build workflow loads each architecture as app:scan-<arch>.
+policies:
+  - uid: app-gate-image-config
+    name: app image config gate
+    version: "1.0.0"
+    scoring_system: highest impact
+    require:
+      - provider: os
+    groups:
+      - title: App contract
+        filters: asset.family.contains("unix")
+        checks:
+          - uid: app-image-config-present
+          - uid: app-image-config-port
+          - uid: app-image-config-nonroot
+          - uid: app-image-config-entrypoint
+
+queries:
+  - uid: app-image-config-present
+    title: Images for both architectures were built for scanning
+    impact: 100
+    mql: |
+      docker.images.where(tags.contains("app:scan-amd64")).length == 1
+      docker.images.where(tags.contains("app:scan-arm64")).length == 1
+  - uid: app-image-config-port
+    title: The images expose TCP port 8080
+    impact: 100
+    mql: docker.images.where(tags.any(_ == /^app:scan-/)).all(exposedPorts.contains("8080/tcp"))
+  - uid: app-image-config-nonroot
+    title: The images run as a non-root user
+    impact: 100
+    mql: docker.images.where(tags.any(_ == /^app:scan-/)).all(runsAsRoot == false)
+  - uid: app-image-config-entrypoint
+    title: The images start /usr/local/bin/app
+    impact: 100
+    mql: docker.images.where(tags.any(_ == /^app:scan-/)).all(entrypoint == ["/usr/local/bin/app"])

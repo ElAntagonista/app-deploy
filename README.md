@@ -111,3 +111,39 @@ kubectl apply -k k8s/
   request: the manifests must render with Kustomize, and the rendered output
   must pass a strict schema check (kubeconform, Kubernetes 1.37), which
   rejects unknown or misspelled fields before anything reaches a cluster.
+
+### Policy as code (cnspec)
+
+`policies/` holds one cnspec gate per scan target:
+
+| Gate | Scans | Checks |
+|---|---|---|
+| `dockerfile.mql.yaml` | `Dockerfile` | App contract (binary at `/usr/local/bin/app`, `EXPOSE 8080`) + Mondoo Dockerfile Security |
+| `image.mql.yaml` | Built image filesystem | `/usr/local/bin/app` exists and is executable |
+| `image-config.mql.yaml` | Built image config, read from the Docker host | Port `8080/tcp`, non-root user, entrypoint |
+| `k8s.mql.yaml` | Rendered Kustomize manifests | App contract (pinned release image, port 8080, readiness on `/healthz`) + Mondoo Kubernetes Deployments Security |
+
+- **App contract plus vendor policy.** The contract checks are ours: they
+  encode what the two repos promise each other. General hardening comes from
+  Mondoo's maintained policies, pinned to the cnspec release and
+  checksum-verified (`.github/actions/setup-cnspec`), rather than hand-written
+  copies.
+- **Blocking is decided by severity, not by who wrote the check.** Scans run
+  with `--risk-threshold 80`: any HIGH or CRITICAL finding fails the pipeline,
+  while MEDIUM and LOW findings are reported but don't block. Lowering the
+  threshold is the way to tighten policy over time (for example 100 → 80 → 60),
+  once existing findings are fixed.
+- **Each gate scores every check on its own impact** (`scoring_system:
+  highest impact`). Mondoo's shipped policies aggregate their checks into one
+  score that never reaches the threshold, so running them directly would
+  report CRITICAL findings and still pass. The gates therefore reference the
+  vendor checks by uid instead of including the vendor policies.
+- **Vendor checks are adopted explicitly.** Each gate lists the vendor checks
+  it enforces, so a cnspec upgrade that adds checks shows up as a reviewed
+  change instead of silently changing what blocks a release.
+- **One gate per scan target.** A scan fails on any asset that no policy
+  applies to, so each target gets exactly the gate written for it, and
+  Kubernetes scans discover only Deployments.
+- **The scans are the test.** `cnspec policy lint` checks each file on its
+  own and cannot resolve references to the vendor bundles, so the gates are
+  validated by running them, including against known-bad fixtures in CI.

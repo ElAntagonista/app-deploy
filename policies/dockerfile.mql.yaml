@@ -1,0 +1,54 @@
+# Gate for the Dockerfile. Scan together with Mondoo's pinned
+# mondoo-dockerfile-security bundle (see .github/actions/setup-cnspec).
+#
+# "highest impact" scoring makes every failed check count on its own impact,
+# so --risk-threshold blocks on individual HIGH/CRITICAL findings. Mondoo's
+# shipped policies aggregate their checks and never reach the threshold.
+policies:
+  - uid: app-gate-dockerfile
+    name: app Dockerfile gate
+    version: "1.0.0"
+    scoring_system: highest impact
+    require:
+      - provider: os
+    groups:
+      - title: App contract
+        filters: asset.platform == "dockerfile"
+        checks:
+          - uid: app-dockerfile-binary-path
+          - uid: app-dockerfile-expose-8080
+      # Vendor checks enforced by this pipeline (mondoo-dockerfile-security
+      # v14.7.0). New vendor checks are adopted deliberately, by editing this list.
+      - title: Mondoo Dockerfile Security
+        filters: asset.platform == "dockerfile"
+        checks:
+          - uid: mondoo-docker-security-no-management-ports
+          - uid: mondoo-docker-security-port-out-of-range
+          - uid: mondoo-docker-security-no-insecure-certificate-validation-apt
+          - uid: mondoo-docker-security-no-insecure-certificate-validation-curl
+          - uid: mondoo-docker-security-no-insecure-certificate-validation-wget
+          - uid: mondoo-docker-security-no-gpg-skip-yum
+          - uid: mondoo-docker-security-no-apt-get-dist-upgrade
+          - uid: mondoo-docker-security-no-sudo-commands
+          - uid: mondoo-docker-security-non-root-user
+          - uid: mondoo-docker-security-no-sensitive-volume-mounts
+          - uid: mondoo-docker-security-no-sensitive-bind-mount-sources
+          - uid: mondoo-docker-security-no-workdir-system-dirs
+          - uid: mondoo-docker-security-use-copy-instead-of-add
+          - uid: mondoo-docker-security-no-secrets-in-env
+          - uid: mondoo-docker-security-no-run-security-insecure
+          - uid: mondoo-docker-security-no-run-network-host
+          - uid: mondoo-docker-best-practice-no-latest-tag
+          - uid: mondoo-docker-best-practice-from-tag-specified
+          - uid: mondoo-docker-security-image-source-label
+          - uid: mondoo-docker-security-image-authors-label
+
+queries:
+  - uid: app-dockerfile-binary-path
+    title: The final stage copies the binary to /usr/local/bin/app
+    impact: 100
+    mql: docker.file.finalStage.copy.any(dst == "/usr/local/bin/app")
+  - uid: app-dockerfile-expose-8080
+    title: The final stage exposes TCP port 8080
+    impact: 100
+    mql: docker.file.finalStage.expose.any(port == 8080 && protocol == "tcp")

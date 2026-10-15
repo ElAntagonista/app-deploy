@@ -1,0 +1,22 @@
+# Gate for the built image's filesystem (cnspec scan docker image ...).
+policies:
+  - uid: app-gate-image
+    name: app image gate
+    version: "1.0.0"
+    scoring_system: highest impact
+    require:
+      - provider: os
+    groups:
+      - title: App contract
+        filters: asset.family.contains("linux")
+        checks:
+          - uid: app-image-binary
+
+queries:
+  - uid: app-image-binary
+    title: The image contains an executable /usr/local/bin/app
+    impact: 100
+    mql: |
+      file("/usr/local/bin/app").exists
+      file("/usr/local/bin/app").permissions.isFile
+      file("/usr/local/bin/app").permissions.other_executable

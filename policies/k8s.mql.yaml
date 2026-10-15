@@ -1,0 +1,57 @@
+# Gate for the rendered Kustomize manifests (cnspec scan k8s ...
+# --discover deployments). Scan together with Mondoo's pinned
+# mondoo-kubernetes-security bundle. Scoring rationale: see dockerfile.mql.yaml.
+policies:
+  - uid: app-gate-k8s
+    name: app Kubernetes gate
+    version: "1.0.0"
+    scoring_system: highest impact
+    require:
+      - provider: k8s
+    groups:
+      - title: App contract
+        filters: asset.platform == "k8s-deployment"
+        checks:
+          - uid: app-k8s-image-pinned
+          - uid: app-k8s-port-8080
+          - uid: app-k8s-readiness
+      # Vendor checks enforced by this pipeline (mondoo-kubernetes-security
+      # v14.7.0, "Kubernetes Deployments Security" group).
+      - title: Mondoo Kubernetes Deployments Security
+        filters: asset.platform == "k8s-deployment"
+        checks:
+          - uid: mondoo-kubernetes-security-deployment-allowprivilegeescalation
+          - uid: mondoo-kubernetes-security-deployment-capability-drop-all
+          - uid: mondoo-kubernetes-security-deployment-capability-net-raw
+          - uid: mondoo-kubernetes-security-deployment-capability-sys-admin
+          - uid: mondoo-kubernetes-security-deployment-containerd-socket
+          - uid: mondoo-kubernetes-security-deployment-crio-socket
+          - uid: mondoo-kubernetes-security-deployment-docker-socket
+          - uid: mondoo-kubernetes-security-deployment-hostipc
+          - uid: mondoo-kubernetes-security-deployment-hostnetwork
+          - uid: mondoo-kubernetes-security-deployment-hostpath-readonly
+          - uid: mondoo-kubernetes-security-deployment-hostpid
+          - uid: mondoo-kubernetes-security-deployment-imagepull
+          - uid: mondoo-kubernetes-security-deployment-k8s-dashboard
+          - uid: mondoo-kubernetes-security-deployment-limitcpu
+          - uid: mondoo-kubernetes-security-deployment-limitmemory
+          - uid: mondoo-kubernetes-security-deployment-ports-hostport
+          - uid: mondoo-kubernetes-security-deployment-privilegedcontainer
+          - uid: mondoo-kubernetes-security-deployment-readonlyrootfilesystem
+          - uid: mondoo-kubernetes-security-deployment-runasnonroot
+          - uid: mondoo-kubernetes-security-deployment-serviceaccount
+          - uid: mondoo-kubernetes-security-deployment-tiller
+
+queries:
+  - uid: app-k8s-image-pinned
+    title: The deployment runs a released app-go image (pinned semver tag)
+    impact: 100
+    mql: k8s.deployment.containers.all(imageName == /^ghcr\.io\/elantagonista\/app-go:v\d+\.\d+\.\d+$/)
+  - uid: app-k8s-port-8080
+    title: The container port is 8080, matching the image
+    impact: 100
+    mql: k8s.deployment.containers.all(ports.any(_["containerPort"] == 8080))
+  - uid: app-k8s-readiness
+    title: Traffic is gated by a readiness probe on /healthz
+    impact: 80
+    mql: k8s.deployment.containers.all(readinessProbe != null && readinessProbe["httpGet"]["path"] == "/healthz")
