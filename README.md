@@ -159,3 +159,7 @@ sent to a Mondoo account.
   scanned before it can be merged. It is the earliest point to catch a broken
   contract (wrong binary path, missing `EXPOSE`) or a hardening regression:
   seconds, with nothing built.
+- **Gate A also scans the rendered Kustomize manifests** (Deployments only),
+  right after the schema check: the exact objects `kubectl apply -k` would
+  send. A pod that runs as root, can escalate privileges or has no readiness
+  probe fails the build before it reaches a cluster.

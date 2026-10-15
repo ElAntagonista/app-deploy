@@ -35,6 +35,18 @@ jobs:
           docker run --rm -i "ghcr.io/yannh/kubeconform:${KUBECONFORM_VERSION}" \
             -strict -summary -kubernetes-version "$KUBERNETES_VERSION" < rendered.yaml
 
+      - id: cnspec
+        uses: ./.github/actions/setup-cnspec
+
+      - uses: ./.github/actions/cnspec-gate
+        with:
+          title: Kubernetes manifests
+          scan: >-
+            k8s rendered.yaml --discover deployments
+            -f ${{ steps.cnspec.outputs.policies }}/mondoo-kubernetes-security.mql.yaml
+            -f policies/k8s.mql.yaml
+            --policy app-gate-k8s
+
   dockerfile:
     name: Policy (Dockerfile)
     runs-on: ubuntu-24.04
