@@ -119,6 +119,18 @@ kubectl apply -k k8s/
   Pod Security Standard, so the API server rejects a non-compliant pod even if
   the gate is bypassed.
 
+### cnspec at a glance
+
+- **Where:** on every push and pull request (Dockerfile, manifests) for fast
+  feedback, and again before an image is pushed (Dockerfile, built images), so
+  the registry only ever holds images that passed.
+- **On failure:** the job fails, nothing is pushed, and the job summary lists
+  the blocking (risk 80 and above) and advisory findings.
+- **Not implemented, but worth adding:** repository posture with cnspec's
+  GitHub provider (branch protection, tag rulesets, Dependabot, read-only
+  default token), guardrails on the workflow files themselves, and scanning
+  the live cluster for drift, for example alongside Flux.
+
 ### Policy as code (cnspec)
 
 `policies/` holds one cnspec gate per scan target:
@@ -173,3 +185,10 @@ sent to a Mondoo account.
   right after the schema check: the exact objects `kubectl apply -k` would
   send. A pod that runs as root, can escalate privileges or has no readiness
   probe fails the build before it reaches a cluster.
+- **Gate B, in `build-image.yml` before anything is pushed.** Each
+  architecture is built into the runner's Docker daemon and scanned: the
+  Dockerfile again (a dispatch builds `main` without a pull request), each
+  image's filesystem (the binary exists and is executable) and each image's
+  config (port 8080, non-root user, entrypoint). Registry login and the push
+  only happen after every gate passes, so every image in GHCR has passed
+  policy.
