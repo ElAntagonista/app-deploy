@@ -3,6 +3,20 @@
 Containerizes and deploys `app` from
 [app-go](https://github.com/ElAntagonista/app-go).
 
+## Deployment flow
+
+1. A semver tag in app-go publishes a GitHub Release with the binaries and
+   their checksums.
+2. app-go's dispatch workflow sends a `new-release` event to this repo.
+   `build-image.yml` verifies the binaries, builds the multi-arch image and
+   pushes `ghcr.io/elantagonista/app-go:<version>`.
+3. Deploying that version is a one-line change, `newTag` in
+   `k8s/kustomization.yaml`, followed by `kubectl apply -k k8s/`.
+
+With GitOps, Flux would watch this repo and apply `k8s/` on every merge, and
+its image automation could open the `newTag` bump itself, so a release would
+reach the cluster with no manual step.
+
 ## Build the image locally
 
 ```sh
