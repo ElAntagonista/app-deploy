@@ -1,0 +1,54 @@
+name: Set up cnspec
+description: >-
+  Install a pinned, checksum-verified cnspec and fetch Mondoo's security
+  policies at the matching version.
+
+inputs:
+  version:
+    description: cnspec version, without the leading "v"
+    default: "14.7.0"
+
+outputs:
+  policies:
+    description: Directory containing the Mondoo policy bundles
+    value: ${{ steps.policies.outputs.dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install cnspec
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        base="https://github.com/mondoohq/cnspec/releases/download/v${VERSION}"
+        tarball="cnspec_${VERSION}_linux_amd64.tar.gz"
+        tmp="$(mktemp -d)"
+        curl -fsSL -o "$tmp/$tarball" "$base/$tarball"
+        curl -fsSL -o "$tmp/SHA256SUMS" "$base/cnspec_v${VERSION}_SHA256SUMS"
+        (cd "$tmp" && sha256sum -c --ignore-missing SHA256SUMS)
+        tar -xzf "$tmp/$tarball" -C "$tmp" cnspec
+        sudo install -m 0755 "$tmp/cnspec" /usr/local/bin/cnspec
+        cnspec version
+
+    # Mondoo's maintained policies, pinned to the cnspec release they ship
+    # with. The checksums guard against the tag being moved.
+    - name: Fetch Mondoo policies
+      id: policies
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        dir="$RUNNER_TEMP/mondoo-policies"
+        mkdir -p "$dir"
+        base="https://raw.githubusercontent.com/mondoohq/cnspec/v${VERSION}/content"
+        for policy in mondoo-dockerfile-security mondoo-kubernetes-security; do
+          curl -fsSL -o "$dir/$policy.mql.yaml" "$base/$policy.mql.yaml"
+        done
+        (cd "$dir" && sha256sum -c) <<'SUMS'
+        642c1a18abdd40b98e4ad299d2a9c2a4e0866d823510f03b5813c2cb7844a1d5  mondoo-dockerfile-security.mql.yaml
+        fbbe9366924307bc5c46e537b411ddcfcf59b9217ab83899cf8b7b60b5929d42  mondoo-kubernetes-security.mql.yaml
+        SUMS
+        echo "dir=$dir" >> "$GITHUB_OUTPUT"
