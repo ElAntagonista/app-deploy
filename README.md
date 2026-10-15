@@ -111,6 +111,13 @@ kubectl apply -k k8s/
   request: the manifests must render with Kustomize, and the rendered output
   must pass a strict schema check (kubeconform, Kubernetes 1.37), which
   rejects unknown or misspelled fields before anything reaches a cluster.
+- **Hardened workload, enforced by the gate.** Non-root (UID 65532), read-only
+  root filesystem, all capabilities dropped, no privilege escalation,
+  `RuntimeDefault` seccomp, no service account token, probes on `/healthz`,
+  requests and limits, and `imagePullPolicy: Always` (image tags in GHCR can
+  be overwritten by a rebuild). The namespace also enforces the `restricted`
+  Pod Security Standard, so the API server rejects a non-compliant pod even if
+  the gate is bypassed.
 
 ### Policy as code (cnspec)
 
