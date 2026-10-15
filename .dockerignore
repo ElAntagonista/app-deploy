@@ -1,0 +1,3 @@
+# Only the downloaded release binaries go into the build context.
+*
+!dist/app_*
