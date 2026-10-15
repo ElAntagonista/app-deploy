@@ -147,3 +147,15 @@ kubectl apply -k k8s/
 - **The scans are the test.** `cnspec policy lint` checks each file on its
   own and cannot resolve references to the vendor bundles, so the gates are
   validated by running them, including against known-bad fixtures in CI.
+
+### Where cnspec runs
+
+Every scan goes through `.github/actions/cnspec-gate`: it fails the job on
+blocking findings and writes the passing, advisory and blocking checks to the
+job summary. Scans run with `--incognito`, so results stay in CI and are not
+sent to a Mondoo account.
+
+- **Gate A, on every push and pull request** (`ci.yml`). The Dockerfile is
+  scanned before it can be merged. It is the earliest point to catch a broken
+  contract (wrong binary path, missing `EXPOSE`) or a hardening regression:
+  seconds, with nothing built.

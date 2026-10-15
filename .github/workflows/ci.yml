@@ -34,3 +34,24 @@ jobs:
         run: |
           docker run --rm -i "ghcr.io/yannh/kubeconform:${KUBECONFORM_VERSION}" \
             -strict -summary -kubernetes-version "$KUBERNETES_VERSION" < rendered.yaml
+
+  dockerfile:
+    name: Policy (Dockerfile)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - id: cnspec
+        uses: ./.github/actions/setup-cnspec
+
+      - uses: ./.github/actions/cnspec-gate
+        with:
+          title: Dockerfile
+          scan: >-
+            docker file Dockerfile
+            -f ${{ steps.cnspec.outputs.policies }}/mondoo-dockerfile-security.mql.yaml
+            -f policies/dockerfile.mql.yaml
+            --policy app-gate-dockerfile

@@ -1,0 +1,43 @@
+name: cnspec gate
+description: >-
+  Run a cnspec scan against the risk threshold, write the result to the job
+  summary and fail the step on blocking findings. Requires setup-cnspec.
+
+inputs:
+  title:
+    description: Name of the gate, used in the job summary
+    required: true
+  scan:
+    description: Arguments for `cnspec scan` (target and policy flags)
+    required: true
+  risk-threshold:
+    description: Fail on any finding with this risk or higher
+    default: "80"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TITLE: ${{ inputs.title }}
+        SCAN: ${{ inputs.scan }}
+        THRESHOLD: ${{ inputs.risk-threshold }}
+      run: |
+        set -uo pipefail
+        report="$(mktemp)"
+        status=0
+        # $SCAN is an argument list written in the workflow, so it is split on purpose.
+        # shellcheck disable=SC2086
+        cnspec scan $SCAN --incognito --risk-threshold "$THRESHOLD" 2>&1 | tee "$report" || status=$?
+        {
+          echo "### cnspec: $TITLE"
+          if [[ $status -eq 0 ]]; then
+            echo "Passed: no findings at or above risk $THRESHOLD."
+          else
+            echo "**Blocked:** findings at or above risk $THRESHOLD."
+          fi
+          echo '```'
+          grep -E '✓|✕|!|Failures|Warnings|Passing' "$report" || true
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+        exit "$status"
