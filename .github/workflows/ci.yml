@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# One run per branch/PR; superseded PR runs are cancelled, main runs finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  KUBECONFORM_VERSION: v0.8.0
+  KUBERNETES_VERSION: 1.37.0
+
+jobs:
+  manifests:
+    name: Validate manifests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Render with Kustomize
+        run: kubectl kustomize k8s/ > rendered.yaml
+
+      - name: Validate against Kubernetes schemas
+        run: |
+          docker run --rm -i "ghcr.io/yannh/kubeconform:${KUBECONFORM_VERSION}" \
+            -strict -summary -kubernetes-version "$KUBERNETES_VERSION" < rendered.yaml

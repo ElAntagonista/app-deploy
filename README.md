@@ -93,3 +93,7 @@ kubectl apply -k k8s/
   configurable app is distributed to many consumers; for one Deployment and
   one Service they are indirection. **Raw YAML rejected:** version pins and
   per-environment differences would turn into `sed` and copy-paste.
+- **Validated in CI** (`.github/workflows/ci.yml`) on every push and pull
+  request: the manifests must render with Kustomize, and the rendered output
+  must pass a strict schema check (kubeconform, Kubernetes 1.37), which
+  rejects unknown or misspelled fields before anything reaches a cluster.
