@@ -8,6 +8,9 @@ ARG VERSION
 ARG TARGETOS
 ARG TARGETARCH
 
+LABEL org.opencontainers.image.source="https://github.com/ElAntagonista/app-deploy" \
+      org.opencontainers.image.authors="ElAntagonista"
+
 COPY --chmod=0755 dist/app_${VERSION}_${TARGETOS}_${TARGETARCH} /usr/local/bin/app
 
 EXPOSE 8080
