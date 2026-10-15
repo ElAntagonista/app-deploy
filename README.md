@@ -151,9 +151,12 @@ kubectl apply -k k8s/
 - **One gate per scan target.** A scan fails on any asset that no policy
   applies to, so each target gets exactly the gate written for it, and
   Kubernetes scans discover only Deployments.
-- **The scans are the test.** `cnspec policy lint` checks each file on its
-  own and cannot resolve references to the vendor bundles, so the gates are
-  validated by running them, including against known-bad fixtures in CI.
+- **The gates are tested.** `policies/test.sh` runs each gate against a
+  known-bad fixture in `policies/testdata/` and asserts that the expected
+  checks fail. Exit codes alone are not enough, because cnspec also exits
+  non-zero on errors, so a broken gate would look like a working one.
+  `cnspec policy lint` can't cover this either: it checks each file on its own
+  and cannot resolve references to the vendor bundles.
 
 ### Where cnspec runs
 

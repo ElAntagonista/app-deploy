@@ -1,0 +1,24 @@
+# Known-bad fixture for policies/test.sh: unpinned image, privileged, root,
+# no readiness probe. The Kubernetes gate must block it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bad
+  namespace: testdata
+spec:
+  selector:
+    matchLabels:
+      app: bad
+  template:
+    metadata:
+      labels:
+        app: bad
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/elantagonista/app-go:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            privileged: true
+            runAsUser: 0

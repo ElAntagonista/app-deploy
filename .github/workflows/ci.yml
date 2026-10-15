@@ -67,3 +67,20 @@ jobs:
             -f ${{ steps.cnspec.outputs.policies }}/mondoo-dockerfile-security.mql.yaml
             -f policies/dockerfile.mql.yaml
             --policy app-gate-dockerfile
+
+  policy-tests:
+    name: Policy tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - id: cnspec
+        uses: ./.github/actions/setup-cnspec
+
+      - name: Known-bad fixtures are blocked
+        env:
+          POLICIES: ${{ steps.cnspec.outputs.policies }}
+        run: policies/test.sh "$POLICIES"
